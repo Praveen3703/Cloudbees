@@ -1,0 +1,125 @@
+//  defining the proto file train.proto for gRPC
+
+syntax = "proto3";
+
+message UserDetails {
+  string first_name = 1;
+  string last_name = 2;
+  string email = 3;
+}
+
+message Ticket {
+  string from = 1;
+  string to = 2;
+  UserDetails user = 3;
+  float price_paid = 4;
+}
+
+message SeatAllocation {
+  string section = 1;
+  int32 seat_number = 2;
+  UserDetails user = 3;
+}
+
+service TrainService {
+  rpc PurchaseTicket(Ticket) returns (Ticket);
+  
+}
+
+//------------------------------------------------------xxx----------------------------xxx---------------------------------------xxx--------------------------xxx-----------------------------------------------
+
+// File Name: main.go
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+	"sync"
+
+	"Chennai_Express" //  package name
+	"google.golang.org/grpc"
+)
+
+type trainServer struct {
+	tickets      []*Chennai_Express.Ticket
+	seatAllocMap map[string]*Chennai_Express.SeatAllocation
+	mutex        sync.Mutex
+}
+
+func (s *trainServer) PurchaseTicket(ctx context.Context, ticket *Chennai_Express.Ticket) (*Chennai_Express.Ticket, error) {
+	// Handling ticket purchase logic and seat allocation
+	return ticket, nil
+}
+
+// Implement  RPC methods
+
+func main() {
+	listener, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	server := grpc.NewServer()
+	Chennai_Express.RegisterTrainServiceServer(server, &trainServer{
+		tickets:      []*Chennai_Express.Ticket{},
+		seatAllocMap: make(map[string]*Chennai_Express.SeatAllocation),
+		mutex:        sync.Mutex{},
+	})
+
+	fmt.Println("gRPC server started on port 50051")
+	if err := server.Serve(listener); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
+}
+
+
+//-------------------------------------------------------------------xxx------------------------xxx--------------------------------------------xxx------------------------------------------------------------------------
+
+// file name: Cient.go
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"Chennai_Express" // package name
+	"google.golang.org/grpc"
+)
+
+func main() {
+	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect to server: %v", err)
+	}
+	defer conn.Close()
+
+	client := Chennai_Express.NewTrainServiceClient(conn)
+
+	//  Making a PurchaseTicket 
+	userDetails := &Chennai_Express.UserDetails{
+		FirstName: "praveen",
+		LastName:  "kumar",
+		Email:     "praveen@gmail.com",
+	}
+	ticket := &Chennai_Express.Ticket{
+		From:      "Chennai",
+		To:        "Mumbai",
+		User:      userDetails,
+		PricePaid: 20.0,
+	}
+
+	purchasedTicket, err := client.PurchaseTicket(context.Background(), ticket)
+	if err != nil {
+		log.Fatalf("Failed to purchase ticket: %v", err)
+	}
+
+	fmt.Printf("Ticket purchased successfully:\n%+v\n", purchasedTicket)
+	
+}
+
+
